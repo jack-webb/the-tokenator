@@ -3,7 +3,7 @@ Quarantine users who post tokens, and invalidate those tokens by posting them to
 
 # Requirements and setup
 
-Requires Python 3.9 and Poetry
+Requires Python 3.8 and Poetry
 
 1. Install dependencies with `poetry install`
 2. Create and populate a `.env` file
