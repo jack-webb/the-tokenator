@@ -27,7 +27,7 @@ logging.basicConfig(level=logging.DEBUG)
 description = os.getenv("DESCRIPTION", default=None)
 
 intents = discord.Intents.default()
-intents.members = True
+intents.guild_messages = True
 
 TOKEN_REGEX = re.compile(r'[a-zA-Z0-9_-]{23,28}\.[a-zA-Z0-9_-]{6,7}\.[a-zA-Z0-9_-]{27}')
 
