@@ -4,11 +4,14 @@ import logging
 import os
 import re
 import sys
+from datetime import datetime
 
 import aiohttp
 import discord
 import yarl
 import binascii
+
+from discord import Colour, Embed
 from discord.ext import commands
 from dotenv import load_dotenv
 
@@ -16,6 +19,8 @@ load_dotenv()
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+QUARANTINE_ROLE_ID = int(os.getenv("QUARANTINE_ROLE_ID"))
+ALERT_CHANNEL_ID = int(os.getenv("ALERT_CHANNEL_ID"))
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -50,18 +55,38 @@ async def on_ready():
 
 @bot.listen("on_message")
 async def log_on_message(message: discord.Message):
-    tokens = [token for token in TOKEN_REGEX.findall(message.content) if _validate_token(token)]
+    tokens = [token for token in TOKEN_REGEX.findall(message.content) if validate_token(token)]
     if tokens and message.author.id != bot.user.id:
+        await message.delete()
+
         gist_id = await create_gist('\n'.join(tokens), description='Invalidating discord token...')
 
-        # todo Quarantine or ban the user here
-        # todo Add an alert message
+        await quarantine(message.author)
+        await send_alert(message)
 
-        await asyncio.sleep(60)
+        await asyncio.sleep(20)
         await delete_gist(gist_id)
 
 
-def _validate_token(token):
+async def quarantine(member: discord.Member):
+    role = member.guild.get_role(QUARANTINE_ROLE_ID)
+    await member.add_roles(
+        role,
+        reason=f"User sent a Discord token in their message"
+    )
+
+async def send_alert(message: discord.Message):
+    alert_channel = bot.get_channel(ALERT_CHANNEL_ID)
+
+    embed = build_embed(message.guild,
+                        "User Quarantined - Discord Token",
+                        f"User {message.author} was quarantined for posting a Discord bot token in #{message.channel}. "
+                        f"The message has been deleted and the token has been invalidated.")
+
+    await alert_channel.send(embed=embed)
+
+
+def validate_token(token):
     try:
         # Just check if the first part validates as a user ID
         (user_id, _, _) = token.split('.')
@@ -76,7 +101,7 @@ class GithubError(commands.CommandError):
     pass
 
 
-async def _github_request(method, url, *, params=None, data=None, headers=None):
+async def github_request(method, url, *, params=None, data=None, headers=None):
     hdrs = {
         'Accept': 'application/vnd.github.inertia-preview+json',
         'User-Agent': 'Discord Token Abuse Killer for Buildapc',
@@ -98,7 +123,7 @@ async def _github_request(method, url, *, params=None, data=None, headers=None):
                 delta = discord.utils._parse_ratelimit_header(r)
                 await asyncio.sleep(delta)
                 _req_lock.release()
-                return await _github_request(method, url, params=params, data=data, headers=headers)
+                return await github_request(method, url, params=params, data=data, headers=headers)
             elif 300 > r.status >= 200:
                 return response
             else:
@@ -126,13 +151,28 @@ async def create_gist(content, *, description=None, filename=None, public=True):
     if description:
         data['description'] = description
 
-    response = await _github_request('POST', 'gists', data=data, headers=headers)
+    response = await github_request('POST', 'gists', data=data, headers=headers)
     return response['id']
 
 
 async def delete_gist(gist_id):
     headers = {'Accept': 'application/vnd.github.v3+json'}
-    await _github_request('DELETE', f'gists/{gist_id}', headers=headers)
+    await github_request('DELETE', f'gists/{gist_id}', headers=headers)
+
+
+def build_embed(server: discord.Guild, title: str, message: str):
+    embed = Embed(
+        colour=Colour.gold(),
+        title=title,
+        description=message
+    )
+
+    return decorate(embed, server)
+
+
+def decorate(embed: discord.Embed, server: discord.Guild):
+    embed.timestamp = datetime.now()
+    return embed.set_footer(icon_url=server.icon_url, text=f"From: {server.name}")
 
 
 if __name__ == "__main__":
