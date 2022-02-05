@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "discord-token-abuse-killer"
+name = "the-tokenator"
 version = "0.1.0"
 description = ""
 authors = ["Jack Webb <git@jackwebb.me>"]
