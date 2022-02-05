@@ -1,4 +1,4 @@
-# discord-token-abuse-killer
+# The Tokenator
 Quarantine users who post tokens, and invalidate those tokens by posting them to a public GitHub gist. Based on code from [Rapptz/RoboDanny](https://github.com/Rapptz/RoboDanny).
 
 # Requirements and setup
