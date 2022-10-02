@@ -46,7 +46,7 @@ _req_lock = asyncio.Lock(loop=bot.loop)
 async def on_ready():
     print("=====================")
     print("Discord Token Abuse Killer, by Jack Webb")
-    print("https://github.com/jack-webb/discord-token-abuse-killer/")
+    print("https://github.com/jack-webb/the-tokenator")
     print(f"Python version {sys.version}")
     print(f"discord.py version {discord.__version__}")
     print(f"Ready, logged in as {bot.user}")
